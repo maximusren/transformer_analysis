@@ -7,6 +7,7 @@ import io
 import pickle
 import re
 import matplotlib.dates as mdates
+from matplotlib.backends.backend_pdf import PdfPages
 
 # Get transformer kVA
 def extract_kva(transformer_type):
@@ -65,8 +66,7 @@ def get_transformer(meter, meter_consumer_transformer):
 
 # Convert the results dictionary to a downloadable CSV format
 def convert_results_to_csv(results_dict):
-
-    # Create a DataFrame from the metrics
+    # DataFrame from the metrics
     metrics_data = []
     for transformer, data in results_dict.items():
         metrics = data.get('metrics', {})
@@ -84,3 +84,36 @@ def convert_results_to_csv(results_dict):
     output = io.StringIO()
     df.to_csv(output, index=False)
     return output.getvalue()
+
+def generate_pdf_report(fig, transformer_name):
+    buffer = io.BytesIO()
+    with PdfPages(buffer) as pdf:
+        pdf.savefig(fig, bbox_inches='tight')
+    buffer.seek(0)
+    return buffer
+
+def create_download_data(transformer, results):
+    # First create DataFrame with datetime and ambient temp
+    combined_df = pd.DataFrame({
+        'datetime': results['ambient_temperature']['datetime'],
+        'ambient_temp': results['ambient_temperature']['Tamb (C)']
+    })
+    
+    # Reset to normal index (0, 1, 2...)
+    combined_df = combined_df.reset_index(drop=True)
+    
+    # Now add the other data columns
+    combined_df = pd.concat([
+        combined_df,
+        results['top_oil'].add_prefix('top_oil_').reset_index(drop=True),
+        results['hot_spot'].add_prefix('hotspot_').reset_index(drop=True),
+        results['Faa'].add_prefix('Faa_').reset_index(drop=True)
+    ], axis=1)
+    
+    return combined_df
+
+
+
+
+
+

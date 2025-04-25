@@ -48,7 +48,7 @@ def TRF_Thermal_Sim(TA0, P, deltaTTO_R, deltaTH_R, R, Tc, Tcw, n, m, kVA, ambien
 
 #%% Plot the results of the thermal analysis in Python
 
-def plot_results2(transformer, top_oil_results, hot_spot_results, ambient_temperature, df_transformer, time, ambtemp, power, dt, meter_consumer_transformer): #transformer argument only provides the name
+def plot_results2(transformer, top_oil_results, hot_spot_results, df_transformer, time, ambtemp, power, dt, meter_consumer_transformer): #transformer argument only provides the name
     fig = plt.figure()
     fig = plt.figure(figsize=(10, 12))
     
@@ -193,8 +193,8 @@ def doThermalAnalysis(transformer, ambient_temperature, meter_consumer_transform
         
     df_transformer['voltage'] = avg_voltages
     
-    df_transformer['voltage'].replace(0, np.nan, inplace=True)
-    df_transformer['voltage'].fillna(method='ffill', inplace=True)
+    df_transformer['voltage'] = df_transformer['voltage'].replace(0, np.nan)
+    df_transformer['voltage'] = df_transformer['voltage'].ffill()
     
     ambient_temperature = ambient_temperature.reindex(df_transformer.index)
     ambient_temperature = ambient_temperature.interpolate(method='linear')
@@ -251,12 +251,10 @@ def doThermalAnalysis(transformer, ambient_temperature, meter_consumer_transform
             V,
             ) 
         
-        top_oil_results[f'Test Number {len(sim_result)}'] = TO_temp
-        hot_spot_results[f'Test Number {len(sim_result)}'] = TH_temp
-        Faa_results[f'Test Number {len(sim_result)}'] = Faa_list
-        yearly_loss[f'Test Number {len(sim_result)}'] = np.nansum(Faa_list) * dt
-
-        print(f"Run {irun + 1} complete")
+        top_oil_results[f'test_{len(sim_result)}'] = TO_temp
+        hot_spot_results[f'test_{len(sim_result)}'] = TH_temp
+        Faa_results[f'test_{len(sim_result)}'] = Faa_list
+        yearly_loss[f'test_{len(sim_result)}'] = np.nansum(Faa_list) * dt
         
         # save result
         this_run = {
@@ -277,5 +275,5 @@ def doThermalAnalysis(transformer, ambient_temperature, meter_consumer_transform
     hot_spot_results = pd.DataFrame(hot_spot_results)
     Faa_results = pd.DataFrame(Faa_results)
     
-    return top_oil_results, hot_spot_results, ambient_temperature, df_transformer, time, Faa_results, yearly_loss
+    return top_oil_results, hot_spot_results, ambient_temperature, df_transformer, time, Faa_results, yearly_loss, sim_result
     

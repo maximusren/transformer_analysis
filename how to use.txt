@@ -1,0 +1,5 @@
+install streamlit using pip
+pip install streamlit
+
+go to file with the code
+in cmd promt: streamlit run main.py
