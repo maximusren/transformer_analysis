@@ -1,6 +1,8 @@
 from utils import *
 import streamlit as st
-
+import base64
+import io
+from matplotlib.backends.backend_pdf import PdfPages
 #%% Faa calculation
 def calculate_Faa(TH):
     Faa = pow(np.e, 15000/383 - 15000/(273+TH))
@@ -276,4 +278,52 @@ def doThermalAnalysis(transformer, ambient_temperature, meter_consumer_transform
     Faa_results = pd.DataFrame(Faa_results)
     
     return top_oil_results, hot_spot_results, ambient_temperature, df_transformer, time, Faa_results, yearly_loss, sim_result
-    
+
+#%%
+
+def display_thermal_results(dt, meter_info_df, current_transformer_results, transformer_id):
+    st.markdown(f"---") # Separator
+    st.markdown(f"### {transformer_id} Thermal Analysis Results")
+    with st.expander(f"View Details for {transformer_id}", expanded=True): # Expander is open by default
+        # Generate and display plot as PDF
+        fig = plot_results2(
+            transformer_id,
+            current_transformer_results['top_oil'],
+            current_transformer_results['hot_spot'],
+            current_transformer_results['transformer_data'],
+            current_transformer_results['time'],
+            current_transformer_results['ambient_temperature']['Tamb (C)'],
+            current_transformer_results['transformer_data']['kwh_per_interval'],
+            dt,
+            meter_info_df # Pass meter_info_df for EV count
+        )
+        pdf_buffer = generate_pdf_report(fig, transformer_id) # Utility function
+        base64_pdf = base64.b64encode(pdf_buffer.getvalue()).decode('utf-8')
+        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="1500px" type="application/pdf"></iframe>'
+        st.markdown(pdf_display, unsafe_allow_html=True)
+
+        # Display summary metrics for the transformer
+        st.subheader("Summary Metrics")
+        col1_disp, col2_disp = st.columns(2)
+        with col1_disp:
+            st.metric("Worst Hourly Aging", f"{current_transformer_results['metrics']['max_hourly_aging']:.2f} hours", help="Maximum loss of life in any single hour (per unit)")
+            st.metric("Yearly Aging Impact", f"{current_transformer_results['metrics']['yearly_aging_hours']:.1f} hours", help="Equivalent hours of aging per year")
+        with col2_disp:
+            st.metric("Peak Hot Spot", f"{current_transformer_results['metrics']['max_hot_spot']:.1f}°C", help="Maximum winding hot spot temperature")
+            st.metric("Peak Top Oil", f"{current_transformer_results['metrics']['max_top_oil']:.1f}°C", help="Maximum top oil temperature")
+
+        # Display simulation parameters used
+        st.subheader("Simulation Parameters (Monte Carlo Runs)")
+        sim_df = pd.DataFrame(current_transformer_results['params'])
+        st.dataframe(sim_df.style.format(precision=2))
+
+        # Download button for detailed results of this transformer
+        combined_data = create_download_data(transformer_id, current_transformer_results) # Utility function
+        csv_combined = combined_data.to_csv(index=True).encode('utf-8')
+        st.download_button(
+            label=f"Download All Results for {transformer_id} (CSV)",
+            data=csv_combined,
+            file_name=f"{transformer_id}_thermal_analysis_results.csv",
+            mime='text/csv',
+            key=f"download_csv_{transformer_id}"
+        )
