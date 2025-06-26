@@ -8,10 +8,7 @@ Instructions to run:
 4. In the command line type: streamlit run main.py
 
 
-
 Uploading files:
-
-
 Meter data file:
  - Purpose: smart meter reads are required for thermal analysis
 
